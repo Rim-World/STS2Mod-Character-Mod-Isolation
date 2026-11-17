@@ -4,6 +4,7 @@
 - 规则：每个文件最多记录 10 个小版本；满 10 个后新建 `002-版本日志.md`。
 - GitHub：https://github.com/Rim-World/STS2Mod-Character-Mod-Isolation
 - 初始提交：`5985f89`（main）
+- 0.2.0 提交：`c5b3cd0`
 
 | 编号 | 文件 | 覆盖版本 |
 |---|---|---|
