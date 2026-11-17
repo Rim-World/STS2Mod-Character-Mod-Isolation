@@ -24,6 +24,7 @@
 | 2026-11-17-2126-1111-autoslay-standard-seed1.stdout | 2026-11-17 21:33 | 否 | 583 | 0.111.1 测试闸门 AutoSlayer standard seed=1；摄政 A10，49 层上限后放弃，过滤 1 个角色 | 是 |
 | 2026-11-17-2136-1111-disabled-mgr.stdout | 2026-11-17 21:37 | 否 | 207 | 0.111.1 禁用 MGR 无头加载；mods=34 character=0，enabled=33 autoCharacter=0 [] | 是 |
 | 2026-11-17-2136-1111-disabled-mgr-godot.log | 2026-11-17 21:38 | 否 | 205 | 禁用 MGR 测试的游戏日志副本 | 是 |
+| 2026-11-17-2147-1111-ritsu-0614-load.stdout | 2026-11-17 21:48 | 否 | 226 | RitsuLib 0.6.14 依赖下限复核；49 补丁、主菜单、自动识别通过 | 是 |
 
 ## 0.1.0
 
