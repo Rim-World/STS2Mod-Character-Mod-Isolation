@@ -5,6 +5,7 @@
 - GitHub：https://github.com/Rim-World/STS2Mod-Character-Mod-Isolation
 - 初始提交：`5985f89`（main）
 - 0.2.0 提交：`c5b3cd0`
+- 0.2.0 的 0.111.1 验证提交：`13c251a`
 
 | 编号 | 文件 | 覆盖版本 |
 |---|---|---|
