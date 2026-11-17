@@ -52,7 +52,9 @@
 
 ### Fixed
 
-- 卡牌池过滤补丁误注册为前置补丁，导致 Token 卡池中的角色模组卡未被移除；改为后置补丁，并记录 `category=cards removed=11 kept=14`。
+- 卡牌池过滤补丁误注册为前置补丁，导致 Token 卡池中的角色模组卡未被移除；改为后置补丁。
+- 增加 `CardPoolModel.AllCards` 源级过滤：仅挂 `GetUnlockedCards` 后置时，实际查询仍能看到 11 张模组 Token 卡；源级过滤后 Token 池 50→39，直接与反射查询均为 0 残留。
+- 0.113.1 完整原版局：摄政、3 幕、victory、退出码 0；卡牌分类 717 个、模组归属 0，全部分类 0 残留。
 
 ### Removed
 

@@ -1,9 +1,47 @@
+using System.Runtime.CompilerServices;
 using MegaCrit.Sts2.Core.Models;
 
 namespace CharacterModIsolation.Patches;
 
 internal static class PoolPatches
 {
+    private sealed class SourceCache
+    {
+        public CardModel[]? Source;
+        public CardModel[]? Filtered;
+    }
+
+    private static readonly ConditionalWeakTable<CardPoolModel, SourceCache> SourceCaches = new();
+
+    public static void CardPoolSourcePostfix(CardPoolModel __instance, ref IEnumerable<CardModel> __result)
+    {
+        try
+        {
+            if (!FilterPolicy.CardsActive || __result is not CardModel[] source)
+                return;
+
+            var cache = SourceCaches.GetOrCreateValue(__instance);
+            if (!ReferenceEquals(cache.Source, source))
+            {
+                cache.Source = source;
+                cache.Filtered = source
+                    .Where(static card => !FilterPolicy.ShouldRemoveCard(card.GetType()))
+                    .ToArray();
+
+                var removed = source.Length - cache.Filtered.Length;
+                if (removed > 0)
+                    FilterLog.Removed("cards-source", removed, cache.Filtered.Length);
+            }
+
+            if (cache.Filtered is { } filtered && filtered.Length != source.Length)
+                __result = filtered;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.Error($"[filter] card source failed, left unchanged: {ex}");
+        }
+    }
+
     public static void CardPoolPostfix(CardPoolModel __instance, ref IEnumerable<CardModel> __result)
     {
         try

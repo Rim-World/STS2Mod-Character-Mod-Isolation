@@ -23,6 +23,7 @@ using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Unlocks;
 
 namespace AutoSlayProbe;
 
@@ -183,13 +184,14 @@ internal static class ReleaseGatePatch
 [HarmonyPatch(typeof(NCharacterSelectButton), nameof(NCharacterSelectButton.Select))]
 internal static class ForceVanillaRegentPatch
 {
-    private const string TargetCharacter = "CHARACTER.REGENT";
+    private static bool IsRegent(NCharacterSelectButton button) =>
+        button.Character?.Id.Entry is "REGENT" or "CHARACTER.REGENT";
 
     private static bool Prefix(NCharacterSelectButton __instance)
     {
         try
         {
-            if (string.Equals(__instance.Character?.Id.Entry, TargetCharacter, StringComparison.Ordinal))
+            if (IsRegent(__instance))
                 return true;
 
             var buttons = UiHelper.FindAll<NCharacterSelectButton>(__instance.GetParent());
@@ -199,15 +201,11 @@ internal static class ForceVanillaRegentPatch
                 catch (Exception ex) { Log.Warn("[probe] unlock failed: " + ex.Message); }
             }
 
-            var target = buttons.FirstOrDefault(button =>
-                string.Equals(button.Character?.Id.Entry, TargetCharacter, StringComparison.Ordinal));
+            var target = buttons.FirstOrDefault(IsRegent);
             if (target is null)
-            {
-                Log.Warn("[probe] vanilla Regent button not found");
                 return true;
-            }
 
-            Log.Info($"[probe] redirect character {__instance.Character?.Id.Entry ?? "random"} -> {TargetCharacter}");
+            Log.Info($"[probe] redirect character {__instance.Character?.Id.Entry ?? "random"} -> REGENT");
             target.Select();
             return false;
         }
@@ -215,6 +213,48 @@ internal static class ForceVanillaRegentPatch
         {
             Log.Error("[probe] force vanilla Regent selection failed: " + ex);
             return true;
+        }
+    }
+}
+
+[HarmonyPatch(typeof(NCharacterSelectScreen), "OnSubmenuOpened")]
+internal static class ForceVanillaRegentOpenedPatch
+{
+    private static bool IsRegent(NCharacterSelectButton button) =>
+        button.Character?.Id.Entry is "REGENT" or "CHARACTER.REGENT";
+
+    [HarmonyPostfix]
+    private static void Postfix(NCharacterSelectScreen __instance)
+    {
+        try
+        {
+            var buttons = UiHelper.FindAll<NCharacterSelectButton>(__instance);
+            foreach (var button in buttons)
+            {
+                try { button.UnlockIfPossible(); }
+                catch (Exception ex) { Log.Warn("[probe] unlock failed: " + ex.Message); }
+            }
+
+            var target = buttons.FirstOrDefault(IsRegent);
+            if (target is null)
+            {
+                var ids = string.Join(",", buttons.Select(button => button.Character?.Id.Entry ?? "null"));
+                Log.Warn($"[probe] Regent after-open not found buttons=[{ids}]");
+                return;
+            }
+
+            if (target.IsSelected)
+            {
+                Log.Info("[probe] Regent already selected after-open");
+                return;
+            }
+
+            Log.Info($"[probe] force Regent after-open; was={buttons.FirstOrDefault(button => button.IsSelected)?.Character?.Id.Entry ?? "none"}");
+            target.Select();
+        }
+        catch (Exception ex)
+        {
+            Log.Error("[probe] force Regent after-open failed: " + ex);
         }
     }
 }
@@ -258,6 +298,10 @@ internal static class CoverageProbe
         .FirstOrDefault(method => method is not null);
 
     private static readonly Dictionary<Type, string?> OwnerCache = new();
+    private static readonly MethodInfo? PoolGetUnlockedCards = typeof(CardPoolModel).GetMethod(
+        nameof(CardPoolModel.GetUnlockedCards),
+        BindingFlags.Public | BindingFlags.Instance,
+        null, [typeof(UnlockState), typeof(CardMultiplayerConstraint)], null);
     private static readonly MethodInfo? ShouldRemoveCard = AppDomain.CurrentDomain.GetAssemblies()
         .Select(assembly => assembly.GetType("CharacterModIsolation.FilterPolicy"))
         .Where(type => type is not null)
@@ -273,6 +317,7 @@ internal static class CoverageProbe
             var unlock = player.UnlockState;
 
             LogSettings();
+            LogPoolPatchInfo();
             LogList("characters", unlock.Characters);
             LogList("card-pools", unlock.CardPools);
             LogList("cards", unlock.CardPools.SelectMany(pool =>
@@ -281,8 +326,10 @@ internal static class CoverageProbe
             {
                 var cards = pool.GetUnlockedCards(unlock, CardMultiplayerConstraint.None).ToList();
                 var isolated = cards.Where(card => IsIsolated(card.GetType())).ToList();
+                var reflected = QueryByReflection(pool, unlock);
                 Log.Info($"[probe] cardpool id={pool.Id.Entry} type={pool.GetType().FullName} " +
-                         $"owner={OwnerOf(pool.GetType()) ?? "null"} total={cards.Count} isolated={isolated.Count}");
+                         $"owner={OwnerOf(pool.GetType()) ?? "null"} total={cards.Count} isolated={isolated.Count} " +
+                         $"reflectTotal={reflected.Count} reflectIsolated={reflected.Count(card => IsIsolated(card.GetType()))}");
                 foreach (var card in isolated)
                     LogCard(card);
             }
@@ -312,6 +359,42 @@ internal static class CoverageProbe
         var isolated = list.Where(model => IsIsolated(model.GetType())).ToList();
         var ids = string.Join(",", isolated.Select(Id).Distinct().OrderBy(id => id, StringComparer.Ordinal));
         Log.Info($"[probe] coverage category={category} total={list.Count} isolated={isolated.Count} ids=[{ids}]");
+    }
+
+    private static List<CardModel> QueryByReflection(CardPoolModel pool, UnlockState unlock)
+    {
+        if (PoolGetUnlockedCards is null)
+            return [];
+        return ((IEnumerable<CardModel>?)PoolGetUnlockedCards.Invoke(
+            pool, [unlock, CardMultiplayerConstraint.None]))?.ToList() ?? [];
+    }
+
+    private static void LogPoolPatchInfo()
+    {
+        try
+        {
+            var method = typeof(CardPoolModel).GetMethod(
+                nameof(CardPoolModel.GetUnlockedCards),
+                BindingFlags.Public | BindingFlags.Instance,
+                null, [typeof(UnlockState), typeof(CardMultiplayerConstraint)], null);
+            var info = method is null ? null : Harmony.GetPatchInfo(method);
+            if (info is null)
+            {
+                Log.Warn("[probe] card-pool patch info not found");
+                return;
+            }
+
+            foreach (var patch in info.Postfixes.OrderBy(p => p.priority))
+            {
+                Log.Info($"[probe] card-pool postfix owner={patch.owner} " +
+                         $"method={patch.PatchMethod.DeclaringType?.FullName}.{patch.PatchMethod.Name} " +
+                         $"priority={patch.priority}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("[probe] card-pool patch info failed: " + ex.Message);
+        }
     }
 
     private static void LogSettings()

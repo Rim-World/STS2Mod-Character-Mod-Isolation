@@ -38,6 +38,9 @@ internal static class PatchRegistry
         PatchMethod("cards", typeof(CardPoolModel), "GetUnlockedCards", null,
             null, Last(typeof(PoolPatches), nameof(PoolPatches.CardPoolPostfix)));
 
+        PatchProperty("card-source", typeof(CardPoolModel), "AllCards",
+            null, Last(typeof(PoolPatches), nameof(PoolPatches.CardPoolSourcePostfix)));
+
         PatchMethod("relic-pool-base", typeof(RelicPoolModel), "GetUnlockedRelics",
             [typeof(UnlockState)], null, Last(typeof(PoolPatches), nameof(PoolPatches.RelicPoolPostfix)));
         PatchMethod("potion-pool-base", typeof(PotionPoolModel), "GetUnlockedPotions",
