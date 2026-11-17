@@ -1,0 +1,8 @@
+PASS: plate: initializer called
+PASS: plate: assembly version 0.1.0.0
+FAIL: patches: 51 applied, 0 failed
+PASS: settings: page registered
+PASS: text: no missing zh entries
+FAIL: own error lines present
+[INFO] [CharacterModIsolation] [patches] installed=47 failed=0
+PASS: manual mode skipped automatic detection

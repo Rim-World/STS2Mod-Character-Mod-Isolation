@@ -1,0 +1,6 @@
+# Force the vanilla Colorful Philosophers event and let the probe inspect/pick.
+event COLORFUL_PHILOSOPHERS
+wait 3
+cmiprobe state
+cmiprobe pick
+wait 8

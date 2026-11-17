@@ -1,0 +1,39 @@
+# 用户原始 prompt：只在本机保存，不入库
+1.PRD/用户prompt/
+
+# 机密与隐私：不得上传、打包或分发
+PRIVACY/
+
+# 临时文件：只保留登记表
+TMP/*
+!TMP/TMP.md
+!TMP/out-of-project.md
+!TMP/001-临时文件登记.md
+
+# .NET / IDE
+9.SRC/bin/
+9.SRC/obj/
+9.SRC/.vs/
+9.SRC/.idea/
+*.user
+*.suo
+*.DotSettings.user
+
+# 构建与测试日志
+*.log
+*.trx
+TestResults/
+
+# 工作痕迹
+.vscode/
+.DS_Store
+Thumbs.db
+
+# 本机代理规则：不随项目发布
+AGENTS.md
+
+# 测试构建产物与本机部署副本
+8.TEST/**/bin/
+8.TEST/**/obj/
+8.TEST/**/deployed/
+8.TEST/**/*.stdout

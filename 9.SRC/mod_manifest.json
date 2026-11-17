@@ -1,0 +1,17 @@
+{
+  "id": "CharacterModIsolation",
+  "name": "角色模组隔离 / Character Mod Isolation",
+  "author": "再玩小卡组找人弄你",
+  "description": "原版角色局隐藏角色模组新增内容；模组角色保持可选、可正常游玩。",
+  "version": "0.1.0",
+  "has_pck": false,
+  "has_dll": true,
+  "affects_gameplay": true,
+  "min_game_version": "0.107.1",
+  "dependencies": [
+    {
+      "id": "STS2-RitsuLib",
+      "min_version": "0.6.13"
+    }
+  ]
+}

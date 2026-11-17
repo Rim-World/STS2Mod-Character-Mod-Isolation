@@ -1,0 +1,56 @@
+# 临时文件登记
+
+- 建立时间：2026-11-17 02:16
+- 当前版本：0.1.0
+- 说明：0.1.0 施工期间的构建日志、无头启动日志、MGRMod 反编译产物、AutoSlayer 测试探针与设置/存档备份。
+
+## 0.1.0
+
+| 文件名 | 创建时间 | 是否清理 | 文件大小（KB） | 用途 | 引用和复用 |
+|---|---|---|---:|---|---|
+| autoslay-save-backup-20261117-1913/ | 2026-11-17 19:13 | 否 | 48128 | AutoSlayer 测试前的 profile1 与 modded profile1 存档目录备份；按文件夹登记 | 是 |
+| settings.save.before-autoslay-20261117-1908 | 2026-11-17 19:08 | 否 | 12.8 | 场景测试前的 settings.save 备份 | 是 |
+| profile.save.before-autoslay-20261117-1908 | 2026-11-17 19:08 | 否 | 0.1 | 场景测试前的 profile.save 备份 | 是 |
+| headless-release-godot.log | 2026-11-17 05:08 | 否 | 218.4 | 发布前最终 DLL 无头日志 | 是 |
+| headless-release.stdout.log | 2026-11-17 05:08 | 否 | 220.9 | 发布前最终 DLL stdout | 是 |
+| headless-manual-mgr-godot.log | 2026-11-17 05:04 | 否 | 230.6 | MGR 启用 + 手动模式无头日志 | 是 |
+| headless-manual-mgr.stdout.log | 2026-11-17 05:04 | 否 | 234.1 | MGR 启用 + 手动模式 stdout | 是 |
+| headless-current-godot.log | 2026-11-17 05:01 | 否 | 215.9 | 最终构建无头加载日志 | 是 |
+| headless-current.stdout.log | 2026-11-17 05:01 | 否 | 218.1 | 最终构建 stdout | 否 |
+| headless-mgr-godot.log | 2026-11-17 04:59 | 否 | 233.2 | MGRMod 启用后的无头启动与自动识别 | 是 |
+| headless-mgr.stdout.log | 2026-11-17 04:59 | 否 | 236.7 | MGRMod 启用后的 stdout | 否 |
+| settings-save-before-mgr.json | 2026-11-17 04:58 | 否 | 12.7 | MGR 临时启用前的 settings.save 备份 | 是 |
+| settings-save-backup-before-mgr.json | 2026-11-17 04:58 | 否 | 12.7 | MGR 临时启用前的 settings.save.backup 备份 | 否 |
+| build-01.log | 2026-11-17 04:38 | 否 | 14.8 | 构建日志 | 否 |
+| build-02.log | 2026-11-17 04:38 | 否 | 0.4 | 构建日志 | 否 |
+| build-03.log | 2026-11-17 04:40 | 否 | 0.4 | 构建日志 | 否 |
+| build-04.log | 2026-11-17 04:41 | 否 | 0.4 | 构建日志 | 否 |
+| build-05.log | 2026-11-17 04:43 | 否 | 0.4 | 构建日志 | 否 |
+| build-06.log | 2026-11-17 04:45 | 否 | 0.4 | 构建日志 | 否 |
+| build-07.log | 2026-11-17 04:46 | 否 | 0.4 | 构建日志 | 否 |
+| build-08.log | 2026-11-17 04:47 | 否 | 0.4 | 构建日志 | 否 |
+| build-09.log | 2026-11-17 04:49 | 否 | 0.4 | 构建日志 | 否 |
+| build-10.log | 2026-11-17 04:50 | 否 | 0.4 | 构建日志 | 否 |
+| build-11.log | 2026-11-17 04:51 | 否 | 0.4 | 构建日志 | 否 |
+| godot-before.log | 2026-11-17 04:38 | 否 | 54.2 | 启动前日志 | 否 |
+| headless-01-godot.log | 2026-11-17 04:39 | 否 | 205.7 | 无头启动日志 | 否 |
+| headless-01.stdout.log | 2026-11-17 04:39 | 否 | 211.0 | 无头启动日志 | 否 |
+| headless-051-godot.log | 2026-11-17 04:52 | 否 | 216.5 | 无头启动日志 | 是 |
+| headless-051.stdout.log | 2026-11-17 04:52 | 否 | 219.8 | 无头启动日志 | 否 |
+| headless-final-godot.log | 2026-11-17 04:49 | 否 | 217.4 | 无头启动日志 | 否 |
+| headless-final.stdout.log | 2026-11-17 04:49 | 否 | 219.8 | 无头启动日志 | 否 |
+| headless-manual-godot.log | 2026-11-17 04:44 | 否 | 212.3 | 无头启动日志 | 否 |
+| headless-manual.stdout.log | 2026-11-17 04:44 | 否 | 214.5 | 无头启动日志 | 否 |
+| headless-manual2-godot.log | 2026-11-17 04:45 | 否 | 209.8 | 无头启动日志 | 否 |
+| headless-manual2.stdout.log | 2026-11-17 04:45 | 否 | 211.9 | 无头启动日志 | 否 |
+| headless-manual51-godot.log | 2026-11-17 04:54 | 否 | 217.3 | 无头启动日志 | 是 |
+| headless-manual51.stdout.log | 2026-11-17 04:54 | 否 | 219.4 | 无头启动日志 | 否 |
+| mgr-decompile/ | 2026-11-17 04:28 | 否 | 1890.2 | MGRMod 反编译查询；批量文件按文件夹登记 | 是 |
+| settings-auto-backup.json | 2026-11-17 04:45 | 否 | 0.3 | 设置备份 | 否 |
+| settings-auto-backup2.json | 2026-11-17 04:53 | 否 | 0.3 | 设置备份 | 否 |
+
+## 0.0.0
+
+| 文件名 | 创建时间 | 是否清理 | 文件大小（KB） | 用途 | 引用和复用 |
+|---|---|---|---|---|---|
+| 无 | - | - | - | - | - |

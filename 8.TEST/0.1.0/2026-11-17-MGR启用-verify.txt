@@ -1,0 +1,8 @@
+PASS: plate: initializer called
+PASS: plate: assembly version 0.1.0.0
+PASS: patches: 51 applied, 0 failed
+PASS: settings: page registered
+PASS: text: no missing zh entries
+PASS: no own error lines
+PASS: auto: MGR detected as character mod
+PASS: auto: MGRMod owner
