@@ -36,7 +36,7 @@ internal static class PatchRegistry
         PatchProperty("characters", typeof(UnlockState), "Characters", null, Last(typeof(CharacterPatches), nameof(CharacterPatches.CharactersPostfix)));
 
         PatchMethod("cards", typeof(CardPoolModel), "GetUnlockedCards", null,
-            Last(typeof(PoolPatches), nameof(PoolPatches.CardPoolPostfix)));
+            null, Last(typeof(PoolPatches), nameof(PoolPatches.CardPoolPostfix)));
 
         PatchMethod("relic-pool-base", typeof(RelicPoolModel), "GetUnlockedRelics",
             [typeof(UnlockState)], null, Last(typeof(PoolPatches), nameof(PoolPatches.RelicPoolPostfix)));

@@ -52,7 +52,7 @@
 
 ### Fixed
 
-- 无。
+- 卡牌池过滤补丁误注册为前置补丁，导致 Token 卡池中的角色模组卡未被移除；改为后置补丁，并记录 `category=cards removed=11 kept=14`。
 
 ### Removed
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -60,6 +61,112 @@ public static class ProbeMod
         {
             Log.Error("[probe] forced patch installation failed: " + ex);
         }
+
+        try
+        {
+            var type = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name == "CharacterModIsolation")
+                ?.GetType("CharacterModIsolation.Patches.PoolPatches");
+            var callback = type?.GetMethod("CardPoolPostfix",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            if (callback is null)
+            {
+                Log.Warn("[probe] CardPoolPostfix not found");
+                return;
+            }
+
+            var prefix = new HarmonyMethod(typeof(CardPoolCallbackProbe).GetMethod(
+                nameof(CardPoolCallbackProbe.Prefix), BindingFlags.Public | BindingFlags.Static));
+            var callbackPostfix = new HarmonyMethod(typeof(CardPoolCallbackProbe).GetMethod(
+                nameof(CardPoolCallbackProbe.Postfix), BindingFlags.Public | BindingFlags.Static));
+            new Harmony("AutoSlayProbe.cardpool").Patch(callback, prefix: prefix, postfix: callbackPostfix);
+            Log.Info("[probe] CardPoolPostfix callback probe installed");
+
+            var policyType = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => a.GetName().Name == "CharacterModIsolation")
+                ?.GetType("CharacterModIsolation.FilterPolicy");
+            var shouldRemove = policyType?.GetMethod("ShouldRemoveCard",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            if (shouldRemove is not null)
+            {
+                var shouldPostfix = new HarmonyMethod(typeof(ShouldRemoveProbe).GetMethod(
+                    nameof(ShouldRemoveProbe.Postfix), BindingFlags.Public | BindingFlags.Static));
+                new Harmony("AutoSlayProbe.shouldremove").Patch(shouldRemove, postfix: shouldPostfix);
+                Log.Info("[probe] ShouldRemoveCard probe installed");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error("[probe] CardPoolPostfix callback probe failed: " + ex);
+        }
+    }
+}
+
+internal static class CardPoolCallbackProbe
+{
+    public static void Prefix([HarmonyArgument(0)] CardPoolModel pool)
+    {
+        var stateType = AppDomain.CurrentDomain.GetAssemblies()
+            .Select(assembly => assembly.GetType("CharacterModIsolation.RunContext"))
+            .FirstOrDefault(type => type is not null);
+        var active = stateType?.GetProperty("IsActive",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null);
+
+        var policyType = AppDomain.CurrentDomain.GetAssemblies()
+            .Select(assembly => assembly.GetType("CharacterModIsolation.FilterPolicy"))
+            .FirstOrDefault(type => type is not null);
+        var cardsActive = policyType?.GetProperty("CardsActive",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null);
+        var shouldRemove = policyType?.GetMethod("ShouldRemoveCard",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+        var sample = pool.AllCards.FirstOrDefault(card => CoverageProbe.OwnerOf(card.GetType()) is { Length: > 0 });
+        var sampleId = sample?.Id.Entry ?? "none";
+        var sampleShould = sample is null ? null : shouldRemove?.Invoke(null, new object[] { sample.GetType() });
+
+        Log.Info($"[probe] CardPoolPostfix enter type={pool.GetType().Name} context={active} " +
+                 $"cardsActive={cardsActive} sample={sampleId} sampleShould={sampleShould}");
+    }
+
+    public static void Postfix(object[] __args)
+    {
+        var pool = __args.Length > 0 ? __args[0] as CardPoolModel : null;
+        var result = __args.Length > 1 ? __args[1] as IEnumerable<CardModel> : null;
+        if (pool?.GetType().Name == "TokenCardPool")
+            Log.Info($"[probe] CardPoolPostfix leave type={pool.GetType().Name} count={result?.Count() ?? -1}");
+    }
+}
+
+internal static class ShouldRemoveProbe
+{
+    public static void Postfix(Type type, ref bool __result)
+    {
+        var assembly = type.Assembly.GetName().Name;
+        if (assembly is "Watcher" or "MGRMod")
+            Log.Info($"[probe] ShouldRemoveCard type={type.Name} result={__result}");
+    }
+}
+
+[HarmonyPatch(typeof(CardPoolModel), nameof(CardPoolModel.GetUnlockedCards))]
+[HarmonyPriority(Priority.First)]
+internal static class CardPoolResultProbeFirst
+{
+    [HarmonyPostfix]
+    private static void Postfix(CardPoolModel __instance, ref IEnumerable<CardModel> __result)
+    {
+        if (__instance.GetType().Name == "TokenCardPool")
+            Log.Info($"[probe] token-pool result before-filter count={__result?.Count() ?? -1}");
+    }
+}
+
+[HarmonyPatch(typeof(CardPoolModel), nameof(CardPoolModel.GetUnlockedCards))]
+[HarmonyPriority(Priority.Last)]
+internal static class CardPoolResultProbeLast
+{
+    [HarmonyPostfix]
+    private static void Postfix(CardPoolModel __instance, ref IEnumerable<CardModel> __result)
+    {
+        if (__instance.GetType().Name == "TokenCardPool")
+            Log.Info($"[probe] token-pool result after-filter count={__result?.Count() ?? -1}");
     }
 }
 
@@ -73,23 +180,19 @@ internal static class ReleaseGatePatch
     }
 }
 
-[HarmonyPatch]
-internal static class ForceMgrCharacterPatch
+[HarmonyPatch(typeof(NCharacterSelectButton), nameof(NCharacterSelectButton.Select))]
+internal static class ForceVanillaRegentPatch
 {
-    private const string TargetCharacter = "MGR_MOD_CHARACTER_MGR_CHARACTER";
+    private const string TargetCharacter = "CHARACTER.REGENT";
 
-    private static MethodBase? TargetMethod()
-    {
-        var type = typeof(AutoSlayer).Assembly.GetType("MegaCrit.Sts2.Core.AutoSlay.Launchers.ModeScreen");
-        return type?.GetMethod("SelectRandomCharacterAsync", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-    }
-
-    private static bool Prefix(Control screen, ref Task __result)
+    private static bool Prefix(NCharacterSelectButton __instance)
     {
         try
         {
-            var container = screen.GetNode("CharSelectButtons/ButtonContainer");
-            var buttons = UiHelper.FindAll<NCharacterSelectButton>(container);
+            if (string.Equals(__instance.Character?.Id.Entry, TargetCharacter, StringComparison.Ordinal))
+                return true;
+
+            var buttons = UiHelper.FindAll<NCharacterSelectButton>(__instance.GetParent());
             foreach (var button in buttons)
             {
                 try { button.UnlockIfPossible(); }
@@ -100,31 +203,30 @@ internal static class ForceMgrCharacterPatch
                 string.Equals(button.Character?.Id.Entry, TargetCharacter, StringComparison.Ordinal));
             if (target is null)
             {
-                Log.Warn("[probe] MGR character button not found");
+                Log.Warn("[probe] vanilla Regent button not found");
                 return true;
             }
 
+            Log.Info($"[probe] redirect character {__instance.Character?.Id.Entry ?? "random"} -> {TargetCharacter}");
             target.Select();
-            Log.Info("[probe] forced character=" + target.Character!.Id.Entry);
-            __result = Task.CompletedTask;
             return false;
         }
         catch (Exception ex)
         {
-            Log.Error("[probe] force MGR selection failed: " + ex);
+            Log.Error("[probe] force vanilla Regent selection failed: " + ex);
             return true;
         }
     }
 }
 
-[HarmonyPatch(typeof(AutoSlayer), "LogRunStartedAndCheckMode")]
+[HarmonyPatch(typeof(RunManager), nameof(RunManager.SetUpNewSingleplayer))]
 internal static class RunStartProbePatch
 {
-    private static void Postfix(RunState runState)
+    private static void Postfix(RunState state)
     {
         try
         {
-            var player = runState.Players[0];
+            var player = state.Players[0];
             var deck = string.Join(",", player.Deck.Cards.Select(card => card.Id.Entry));
             var contextType = AppDomain.CurrentDomain.GetAssemblies()
                 .Select(assembly => assembly.GetType("CharacterModIsolation.RunContext"))
@@ -137,11 +239,161 @@ internal static class RunStartProbePatch
             var reason = contextType?.GetProperty("Reason",
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null);
             Log.Info($"[probe] run character={player.Character.Id.Entry} cmi_active={active} cmi_reason={reason} deck=[{deck}]");
+            CoverageProbe.Run(state);
         }
         catch (Exception ex)
         {
             Log.Error("[probe] run-start inspection failed: " + ex);
         }
+    }
+}
+
+internal static class CoverageProbe
+{
+    private static readonly MethodInfo? IsolatedOwner = AppDomain.CurrentDomain.GetAssemblies()
+        .Select(assembly => assembly.GetType("CharacterModIsolation.CharacterModRegistry"))
+        .Where(type => type is not null)
+        .Select(type => type!.GetMethod("GetIsolatedOwner",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
+        .FirstOrDefault(method => method is not null);
+
+    private static readonly Dictionary<Type, string?> OwnerCache = new();
+    private static readonly MethodInfo? ShouldRemoveCard = AppDomain.CurrentDomain.GetAssemblies()
+        .Select(assembly => assembly.GetType("CharacterModIsolation.FilterPolicy"))
+        .Where(type => type is not null)
+        .Select(type => type!.GetMethod("ShouldRemoveCard",
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
+        .FirstOrDefault(method => method is not null);
+
+    public static void Run(RunState runState)
+    {
+        try
+        {
+            var player = runState.Players[0];
+            var unlock = player.UnlockState;
+
+            LogSettings();
+            LogList("characters", unlock.Characters);
+            LogList("card-pools", unlock.CardPools);
+            LogList("cards", unlock.CardPools.SelectMany(pool =>
+                pool.GetUnlockedCards(unlock, CardMultiplayerConstraint.None)));
+            foreach (var pool in unlock.CardPools)
+            {
+                var cards = pool.GetUnlockedCards(unlock, CardMultiplayerConstraint.None).ToList();
+                var isolated = cards.Where(card => IsIsolated(card.GetType())).ToList();
+                Log.Info($"[probe] cardpool id={pool.Id.Entry} type={pool.GetType().FullName} " +
+                         $"owner={OwnerOf(pool.GetType()) ?? "null"} total={cards.Count} isolated={isolated.Count}");
+                foreach (var card in isolated)
+                    LogCard(card);
+            }
+            LogList("relics", unlock.Relics);
+            LogList("potions", unlock.Potions);
+            LogList("shared-events", ModelDb.AllSharedEvents);
+            LogList("shared-ancients", unlock.SharedAncients);
+            LogList("acts", runState.Acts);
+
+            foreach (var act in runState.Acts)
+            {
+                LogList($"act{act.Index}.encounters", act.AllEncounters);
+                LogList($"act{act.Index}.monsters", act.AllMonsters);
+                LogList($"act{act.Index}.events", act.AllEvents);
+                LogList($"act{act.Index}.ancients", act.AllAncients);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error("[probe] coverage failed: " + ex);
+        }
+    }
+
+    private static void LogList(string category, IEnumerable models)
+    {
+        var list = models.Cast<object>().ToList();
+        var isolated = list.Where(model => IsIsolated(model.GetType())).ToList();
+        var ids = string.Join(",", isolated.Select(Id).Distinct().OrderBy(id => id, StringComparer.Ordinal));
+        Log.Info($"[probe] coverage category={category} total={list.Count} isolated={isolated.Count} ids=[{ids}]");
+    }
+
+    private static void LogSettings()
+    {
+        try
+        {
+            var settingsType = AppDomain.CurrentDomain.GetAssemblies()
+                .Select(assembly => assembly.GetType("CharacterModIsolation.ModSettings"))
+                .FirstOrDefault(type => type is not null);
+            var settings = settingsType?.GetProperty("Current",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null);
+            if (settings is null)
+            {
+                Log.Warn("[probe] settings object not found");
+                return;
+            }
+            var snapshotType = settings.GetType();
+
+            string Read(string name) => snapshotType.GetProperty(name,
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(settings)?.ToString() ?? "?";
+
+            Log.Info($"[probe] filter-flags source={Read("Source")} master={Read("MasterEnabled")} " +
+                     $"cards={Read("FilterCards")} relics={Read("FilterRelics")} potions={Read("FilterPotions")} " +
+                     $"events={Read("FilterEvents")} encounters={Read("FilterEncounters")} " +
+                     $"ancients={Read("FilterAncients")} acts={Read("FilterActs")}");
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("[probe] settings inspection failed: " + ex.Message);
+        }
+    }
+
+    private static void LogCard(CardModel card)
+    {
+        var type = card.GetType();
+        var remove = false;
+        try
+        {
+            remove = ShouldRemoveCard?.Invoke(null, new object[] { type }) is true;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("[probe] ShouldRemoveCard failed: " + ex.Message);
+        }
+
+        Log.Info($"[probe] isolated-card id={card.Id.Entry} type={type.FullName} " +
+                 $"asm={type.Assembly.GetName().Name} owner={OwnerOf(type) ?? "null"} " +
+                 $"pool={card.Pool?.Id.Entry ?? "null"} shouldRemove={remove}");
+    }
+
+    private static bool IsIsolated(Type type) => OwnerOf(type) is { Length: > 0 };
+
+    internal static string? OwnerOf(Type type)
+    {
+        if (IsolatedOwner is null)
+            return null;
+        if (OwnerCache.TryGetValue(type, out var cached))
+            return cached;
+
+        string? result = null;
+        try
+        {
+            result = IsolatedOwner.Invoke(null, new object[] { type }) as string;
+        }
+        catch
+        {
+            result = null;
+        }
+
+        OwnerCache[type] = result;
+        return result;
+    }
+
+    private static string Id(object model)
+    {
+        if (model is AbstractModel abstractModel)
+        {
+            try { return abstractModel.Id.Entry; }
+            catch { return abstractModel.GetType().Name; }
+        }
+
+        return model.GetType().Name;
     }
 }
 
