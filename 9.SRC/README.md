@@ -2,8 +2,8 @@
 
 让第三方角色模组保持启用，同时在游玩原版角色时把角色模组新增的内容从本局内容池中隔离。纯卡牌、纯遗物等非角色模组内容继续出现。
 
-- 当前版本：0.2.0。状态：可构建；0.113.1、0.111.1 的无头加载、AutoSlayer、设置页检测清单与禁用 MGR 排除已通过。
-- 目标游戏：Slay the Spire 2 0.111.0、0.113.1。0.107.1 停止支持。
+- 当前版本：0.2.0。状态：可构建；同一 DLL 在 0.113.1、0.111.1 的无头加载、AutoSlayer、设置页检测清单与禁用 MGR 排除已通过。
+- 目标游戏：Slay the Spire 2 0.111.1、0.113.1。0.107.1 停止支持；精确 0.111.0 不单独复测。
 - 运行环境：Godot 4.5.1、.NET 9、Harmony。
 - 设计文档：[可行性调研](../3.DOCS/001-R-角色模组隔离可行性调研.md)、[总体设计](../5.SDD/001-总体设计草案.md)、[隔离行为规范](../6.SPEC/001-隔离行为规范-v0.5.md)。
 
@@ -32,14 +32,24 @@
 
 ## 依赖
 
-依赖 RitsuLib 0.6.14 或更高，用于设置页、持久化、本地化与加载顺序。运行时还需要 RitsuLib 的完整变体包，不能只复制根 DLL。
+依赖 RitsuLib **最新版**，用于设置页、持久化、本地化与加载顺序。运行时还需要 RitsuLib 的完整变体包，不能只复制根 DLL。清单中的 `min_version` 是发布时的最低门槛，不是固定目标；每次构建/发布前必须检查本机已安装版本，并更新到当前最新版。
+
+### 依赖版本检查
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File 9.SRC/tools/check-ritsu-version.ps1
+```
+
+- 已安装版本低于清单下限：检查失败，先更新 RitsuLib。
+- 已安装版本高于清单下限：提示更新 `min_version` 并重新测试。
+- 脚本只读取本机已安装的 RitsuLib，不联网，不修改文件。
 
 ## 单 DLL 兼容
 
 - 一个项目、一个程序集、一个 `mod_manifest.json`；不按游戏版本生成两个包。
 - `RitsuLibCompatTarget=0.111.0` 是 RitsuLib 包内的兼容分支，不是游戏版本，也不是第二份模组。
 - 编译引用当前游戏程序集；运行时由同一份 DLL 调用 0.111/0.113 的共同成员。差异目标由补丁注册器按存在性选择。
-- 当前验证缺口：0.113.1 与 0.111.1 的测试分别在各自环境编译；尚未用同一份二进制在 0.113.1 复测。
+- 已验证：同一 SHA-256 的 DLL 在 0.111.1 与 0.113.1 均加载并完成 AutoSlayer；详见 [013-E](../3.DOCS/013-E-同一DLL跨版本验证.md)。
 
 ## 安装
 
@@ -69,16 +79,18 @@ Slay the Spire 2/mods/CharacterModIsolation/
 dotnet build 9.SRC/CharacterModIsolation.csproj -c Release
 ```
 
-默认引用本机当前游戏版本的 `sts2.dll`、`0Harmony.dll` 和已安装的 RitsuLib 变体包。当前测试环境为 0.111.1；兼容编译入口为 0.111.0。换机器时用 `/p:Sts2Dir=...`、`/p:RitsuLibDeployRoot=...` 覆盖。
+默认引用本机当前游戏版本的 `sts2.dll`、`0Harmony.dll` 和已安装的 RitsuLib 变体包。测试环境为 0.111.1、0.113.1；兼容编译入口为 0.111.0。换机器时用 `/p:Sts2Dir=...`、`/p:RitsuLibDeployRoot=...` 覆盖。
+
+构建前先运行上面的依赖版本检查。若检查提示 RitsuLib 比清单新，更新 `min_version` 后再构建和复测，不要把旧下限当成固定目标。
 
 ## 验证状态
 
 | 项目 | 状态 | 证据 |
 |---|---|---|
-| 0.113.1 加载到主菜单 | 通过 | 0.2.0；51 个补丁应用，0 失败；设置页注册 |
+| 0.113.1 加载到主菜单 | 通过 | 0.2.0 同一 DLL；51 个补丁应用，0 失败；设置页注册 |
 | 自动模式不启动（手动来源） | 通过 | 手动模式日志无 `[auto]` |
 | 自动模式检测清单 | 通过（数据） | `enabled=38 autoCharacter=1 [MGRMod]`；UI 视觉待复验 |
-| 0.113.1 AutoSlayer | 通过 | 0.2.0 standard seed=1，摄政 A10，49 层 victory |
+| 0.113.1 AutoSlayer | 通过 | 同一 DLL；standard seed=1，摄政 A10，49 层 victory；`removed=1 kept=6` |
 | 禁用模组不检测 | 通过 | MGRMod 禁用后 `autoCharacter=0 []` |
 | MGRMod 自动识别 | 通过 | 启用后 `mods=39 character=1`，`MGRMod kind=Character` |
 | 游戏内卡牌/遗物/药水/事件/章节 | 待验证 | 需要启用角色模组后实测 |
@@ -87,6 +99,8 @@ dotnet build 9.SRC/CharacterModIsolation.csproj -c Release
 | 0.111.1 AutoSlayer | 通过（跑完） | standard seed=1，摄政 A10；49 层达上限后主动放弃 |
 | 0.111.1 原版角色过滤 | 通过 | `characters removed=1 kept=5`；奖励卡全部为摄政原版卡 |
 | 0.111.1 禁用 MGRMod | 通过 | `mods=34 character=0`；`enabled=33 autoCharacter=0 []` |
+| 同一 DLL 双版本 | 通过 | SHA-256 `7986...`；0.111.1 `kept=5`、0.113.1 `kept=6`；0.113.1 AutoSlayer victory |
+| RitsuLib 最新版检查 | 通过 | 已安装 0.6.14；清单下限 0.6.14；`check-ritsu-version.ps1` 通过 |
 
 ## 已知限制
 

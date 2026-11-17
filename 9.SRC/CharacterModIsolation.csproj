@@ -75,6 +75,10 @@
     <Message Importance="high" Text="已尝试部署到 $(ModOutputDir)" />
   </Target>
 
+  <Target Name="CheckRitsuLibVersion" BeforeTargets="Build">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\tools\check-ritsu-version.ps1&quot; -RitsuLibRoot &quot;$(RitsuLibDeployRoot)&quot; -Manifest &quot;$(MSBuildProjectDirectory)\mod_manifest.json&quot;" />
+  </Target>
+
   <Target Name="ValidateVersionConsistency" BeforeTargets="Build">
     <PropertyGroup>
       <_ManifestPath>$(MSBuildProjectDirectory)\mod_manifest.json</_ManifestPath>
