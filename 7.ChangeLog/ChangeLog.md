@@ -2,7 +2,8 @@
 
 - 建立时间：2026-11-17 02:16
 - 规则：每个文件最多记录 10 个小版本；满 10 个后新建 `002-版本日志.md`。
-- 当前没有 git 提交号；项目尚未初始化 git。
+- GitHub：https://github.com/Rim-World/STS2Mod-Character-Mod-Isolation
+- 初始提交：`5985f89`（main）
 
 | 编号 | 文件 | 覆盖版本 |
 |---|---|---|
