@@ -142,7 +142,9 @@ internal static class RunContext
 
             if (settings.Source == IsolationSource.Manual)
             {
-                _pendingEffective = new HashSet<string>(settings.ManualModIds, StringComparer.Ordinal);
+                _pendingEffective = new HashSet<string>(
+                    settings.ManualModIds.Where(CharacterModRegistry.IsModEnabled),
+                    StringComparer.Ordinal);
                 if (_pendingEffective.Count == 0)
                 {
                     SetPending(false, "manual-empty");
@@ -232,7 +234,9 @@ internal static class RunContext
 
         if (settings.Source == IsolationSource.Manual)
         {
-            _effective = new HashSet<string>(settings.ManualModIds, StringComparer.Ordinal);
+            _effective = new HashSet<string>(
+                settings.ManualModIds.Where(CharacterModRegistry.IsModEnabled),
+                StringComparer.Ordinal);
             if (_effective.Count == 0)
             {
                 SetInactive(state, "manual-empty");

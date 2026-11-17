@@ -1,5 +1,6 @@
 using System.Reflection;
 using MegaCrit.Sts2.Core.Modding;
+using MegaCrit.Sts2.Core.Saves;
 using MegaCrit.Sts2.Core.Models;
 
 namespace CharacterModIsolation;
@@ -23,6 +24,7 @@ internal static class CharacterModRegistry
     private static readonly object Gate = new();
     private static readonly Dictionary<string, AutoCharacterResult> Auto = new(StringComparer.Ordinal);
     private static bool _built;
+    private static HashSet<string>? _enabledIds;
 
     public static string? GetIsolatedOwner(Type type)
     {
@@ -34,11 +36,56 @@ internal static class CharacterModRegistry
     {
         var settings = ModSettings.Current;
         if (settings.Source == IsolationSource.Manual)
-            return settings.ManualModIds.Contains(modId);
+            return settings.ManualModIds.Contains(modId) && IsModEnabled(modId);
 
         EnsureAuto();
         return Auto.TryGetValue(modId, out var result) &&
                result.Kind is CharacterModKind.Character or CharacterModKind.LikelyCharacter;
+    }
+
+    public static bool IsModEnabled(Mod mod)
+    {
+        try
+        {
+            var settings = SaveManager.Instance?.SettingsSave?.ModSettings;
+            return settings is null || !settings.IsModDisabled(mod);
+        }
+        catch (Exception ex)
+        {
+            Plugin.Logger.Warn($"[mods] enabled-state read failed; treating as enabled: {ex.Message}");
+            return true;
+        }
+    }
+
+    public static bool IsModEnabled(string modId)
+    {
+        EnsureEnabledIds();
+        return _enabledIds!.Contains(modId);
+    }
+
+    public static void InvalidateEnabledCache()
+    {
+        lock (Gate)
+            _enabledIds = null;
+    }
+
+    public static bool IsDetectedCharacterMod(string modId)
+    {
+        if (ModSettings.Current.Source == IsolationSource.Manual)
+            return false;
+
+        var result = GetAuto(modId);
+        return result.Kind is CharacterModKind.Character or CharacterModKind.LikelyCharacter;
+    }
+
+    public static bool HasDetectedCharacterMod()
+    {
+        if (ModSettings.Current.Source == IsolationSource.Manual)
+            return false;
+
+        EnsureAuto();
+        return Auto.Values.Any(static result =>
+            result.Kind is CharacterModKind.Character or CharacterModKind.LikelyCharacter);
     }
 
     public static bool IsIsolatedMod(string modId) => IsCharacterMod(modId);
@@ -47,7 +94,7 @@ internal static class CharacterModRegistry
     {
         var settings = ModSettings.Current;
         if (settings.Source == IsolationSource.Manual)
-            return settings.ManualModIds.Count > 0;
+            return settings.ManualModIds.Any(IsModEnabled);
 
         EnsureAuto();
         return Auto.Values.Any(static result =>
@@ -68,6 +115,8 @@ internal static class CharacterModRegistry
             return new AutoCharacterResult(CharacterModKind.Unknown, "manual");
 
         EnsureAuto();
+        if (!IsModEnabled(modId))
+            return new AutoCharacterResult(CharacterModKind.Unknown, "disabled");
         return Auto.TryGetValue(modId, out var result)
             ? result
             : new AutoCharacterResult(CharacterModKind.Unknown, "not-loaded");
@@ -102,6 +151,7 @@ internal static class CharacterModRegistry
         {
             Auto.Clear();
             _built = false;
+            _enabledIds = null;
         }
 
         EnsureAuto(forceLog: true);
@@ -134,7 +184,7 @@ internal static class CharacterModRegistry
                 {
                     var type = character.GetType();
                     var owner = ContentOwnership.GetOwnerModId(type);
-                    if (string.IsNullOrWhiteSpace(owner))
+                    if (string.IsNullOrWhiteSpace(owner) || !IsModEnabled(owner))
                         continue;
 
                     Auto[owner] = new AutoCharacterResult(
@@ -207,13 +257,16 @@ internal static class CharacterModRegistry
 
     private static void ScanAssembly(Assembly assembly, string? knownModId)
     {
+        if (knownModId is { Length: > 0 } && !IsModEnabled(knownModId))
+            return;
+
         foreach (var type in GetTypes(assembly))
         {
             if (!IsConcreteCharacter(type))
                 continue;
 
             var owner = knownModId ?? ContentOwnership.GetOwnerModId(type);
-            if (string.IsNullOrWhiteSpace(owner))
+            if (string.IsNullOrWhiteSpace(owner) || !IsModEnabled(owner))
                 continue;
 
             if (!Auto.TryGetValue(owner, out var existing) ||
@@ -259,8 +312,13 @@ internal static class CharacterModRegistry
     {
         try
         {
-            return ModManager.GetLoadedMods()
+            var loaded = ModManager.GetLoadedMods()
                 .Where(static mod => mod.manifest?.id is { Length: > 0 })
+                .ToList();
+            var enabled = loaded.Where(IsModEnabled).ToList();
+            if (enabled.Count != loaded.Count)
+                Plugin.Logger.Info($"[auto] skipped disabled mods: {loaded.Count - enabled.Count}");
+            return enabled
                 .Select(static mod => new ModInfo(
                     mod,
                     mod.manifest!.id!,
@@ -271,6 +329,35 @@ internal static class CharacterModRegistry
         {
             Plugin.Logger.Warn($"[auto] failed to enumerate loaded mods: {ex.Message}");
             return [];
+        }
+    }
+
+    private static void EnsureEnabledIds()
+    {
+        if (_enabledIds is not null)
+            return;
+
+        lock (Gate)
+        {
+            if (_enabledIds is not null)
+                return;
+
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            try
+            {
+                foreach (var mod in ModManager.GetLoadedMods())
+                {
+                    var id = mod.manifest?.id;
+                    if (!string.IsNullOrWhiteSpace(id) && IsModEnabled(mod))
+                        ids.Add(id);
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger.Warn($"[mods] enabled enumeration failed: {ex.Message}");
+            }
+
+            _enabledIds = ids;
         }
     }
 

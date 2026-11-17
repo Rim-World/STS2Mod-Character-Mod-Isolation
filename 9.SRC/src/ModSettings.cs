@@ -6,6 +6,7 @@ using STS2RitsuLib.Data;
 using STS2RitsuLib.Settings;
 using STS2RitsuLib.Utils.Persistence;
 using MegaCrit.Sts2.Core.Modding;
+using MegaCrit.Sts2.Core.Runs;
 
 namespace CharacterModIsolation;
 
@@ -247,16 +248,21 @@ internal static class ModSettings
     private static void AddModsSection(ModSettingsSectionBuilder section)
     {
         var mods = GetSelectableMods();
+        var detected = mods.Where(static mod => CharacterModRegistry.IsDetectedCharacterMod(mod.Id))
+            .Select(static mod => mod.Id)
+            .OrderBy(static id => id, StringComparer.Ordinal)
+            .ToArray();
+        Plugin.Logger.Info($"[settings] enabled={mods.Count} autoCharacter={detected.Length} [{string.Join(",", detected)}]");
 
-        section.WithTitle(Localization.Text("cmi.section.mods", "Loaded mods"))
+        section.WithTitle(Localization.Text("cmi.section.mods", "Enabled mods"))
             .WithDescription(Localization.Text("cmi.mods.desc",
-                "Automatic mode uses role evidence. Manual mode isolates exactly the checked mods."));
+                "Automatic mode shows detected character mods. Manual mode lists enabled mods only."));
 
         if (mods.Count == 0)
         {
             section.AddParagraph("empty",
-                Localization.Text("cmi.mods.empty", "No loaded mods found."),
-                Localization.Text("cmi.mods.empty.desc", "Content from built-in game assemblies is never isolated."));
+                Localization.Text("cmi.mods.empty", "No enabled mods found."),
+                Localization.Text("cmi.mods.empty.desc", "Disabled or unloaded mods are not shown."));
             return;
         }
 
@@ -269,7 +275,27 @@ internal static class ModSettings
                 CharacterModRegistry.RescanAuto();
                 host.RequestRefresh();
             },
-            description: Localization.Text("cmi.rescan.desc", "Only used in automatic mode."));
+            description: Localization.Text("cmi.rescan.desc", "Only used in automatic mode."))
+            .WithEntryVisibleWhen("rescan", () => Current.Source == IsolationSource.Auto);
+
+        section.AddHeader(
+                "auto_title",
+                Localization.Text("cmi.auto.title", "Detected character mods"),
+                Localization.Text("cmi.auto.title.desc", "Only enabled mods are examined."))
+            .WithEntryVisibleWhen("auto_title", () => Current.Source == IsolationSource.Auto);
+
+        section.AddParagraph(
+                "auto_empty",
+                Localization.Text("cmi.auto.empty", "No enabled character mods detected."),
+                Localization.Text("cmi.auto.empty.desc", "Disabled mods are not examined."))
+            .WithEntryVisibleWhen("auto_empty", () => Current.Source == IsolationSource.Auto &&
+                                                       !CharacterModRegistry.HasDetectedCharacterMod());
+
+        section.AddHeader(
+                "manual_title",
+                Localization.Text("cmi.manual.title", "Enabled mods"),
+                Localization.Text("cmi.manual.title.desc", "Only checked mods are isolated."))
+            .WithEntryVisibleWhen("manual_title", () => Current.Source == IsolationSource.Manual);
 
         for (var i = 0; i < mods.Count; i++)
         {
@@ -279,9 +305,12 @@ internal static class ModSettings
             var index = i;
 
             section.AddParagraph(
-                "auto_" + index,
-                ModSettingsText.Dynamic(() => display + " · " + id),
-                ModSettingsText.Dynamic(() => CharacterModRegistry.DescribeAuto(id)));
+                    "auto_" + index,
+                    ModSettingsText.Dynamic(() => display + " · " + id),
+                    ModSettingsText.Dynamic(() => AutoStatus(id)))
+                .WithEntryVisibleWhen("auto_" + index, () =>
+                    Current.Source == IsolationSource.Auto &&
+                    CharacterModRegistry.IsDetectedCharacterMod(id));
 
             var toggle = ModSettingsBindings.WithDefault(
                 ModSettingsBindings.Project<List<string>, bool>(
@@ -296,8 +325,33 @@ internal static class ModSettings
                     ModSettingsText.Dynamic(() => Localization.Resolve("cmi.mods.check", "Isolate") + " · " + display),
                     toggle,
                     ModSettingsText.Dynamic(() => id))
-                .WithEntryVisibleWhen("manual_" + index, () => Current.Source == IsolationSource.Manual)
-                .WithEntryVisibleWhen("auto_" + index, () => Current.Source == IsolationSource.Auto);
+                .WithEntryVisibleWhen("manual_" + index, () => Current.Source == IsolationSource.Manual);
+        }
+    }
+
+    private static string AutoStatus(string id)
+    {
+        var detail = CharacterModRegistry.DescribeAuto(id);
+        var settings = Current;
+        var anyCategory = settings.FilterCards || settings.FilterRelics || settings.FilterPotions ||
+                          settings.FilterEvents || settings.FilterEncounters || settings.FilterAncients ||
+                          settings.FilterActs;
+        if (RunContext.IsActive && anyCategory && RunContext.EffectiveModIds.Contains(id))
+            return detail + " · " + Localization.Resolve("cmi.auto.status.active", "Filtering this run");
+        if (RunContext.IsActive || IsInRun())
+            return detail + " · " + Localization.Resolve("cmi.auto.status.inactive", "Detected; not filtering this run");
+        return detail + " · " + Localization.Resolve("cmi.auto.status.pending", "Detected; starts in a vanilla-character run");
+    }
+
+    private static bool IsInRun()
+    {
+        try
+        {
+            return RunManager.Instance?.DebugOnlyGetState() is not null;
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -322,6 +376,7 @@ internal static class ModSettings
         {
             return ModManager.GetLoadedMods()
                 .Where(static mod => mod.manifest?.id is { Length: > 0 } id && id != Plugin.ModId)
+                .Where(CharacterModRegistry.IsModEnabled)
                 .Select(static mod => new LoadedMod(
                     mod.manifest!.id!,
                     string.IsNullOrWhiteSpace(mod.manifest.name) ? mod.manifest.id! : mod.manifest.name!))

@@ -2,17 +2,17 @@
 
   <!--
     角色模组隔离。
-    单一程序集、单一目录、单一清单，面向游戏 0.107.1 / 0.111.0 / 0.113.1。
-    编译期绑定 RitsuLib 0.107.1 兼容入口；运行时由 RitsuLib 的变体加载器选择实际分支。
+    单一程序集、单一目录、单一清单，面向游戏 0.111.0 / 0.113.1。
+    编译期绑定 RitsuLib 0.111.0 兼容入口；运行时由 RitsuLib 的变体加载器选择实际分支。
   -->
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <AssemblyName>CharacterModIsolation</AssemblyName>
     <RootNamespace>CharacterModIsolation</RootNamespace>
-    <Version>0.1.0</Version>
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
-    <FileVersion>0.1.0.0</FileVersion>
+    <Version>0.2.0</Version>
+    <AssemblyVersion>0.2.0.0</AssemblyVersion>
+    <FileVersion>0.2.0.0</FileVersion>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -31,8 +31,8 @@
 
     <!-- 本机实际加载的 RitsuLib 创意工坊变体包。 -->
     <RitsuLibDeployRoot Condition="'$(RitsuLibDeployRoot)' == ''">C:\Game\Steam\steamapps\workshop\content\2868840\3747602295</RitsuLibDeployRoot>
-    <!-- 单 DLL 兼容三版本：编译期使用最低目标 0.107.1。 -->
-    <RitsuLibCompatTarget Condition="'$(RitsuLibCompatTarget)' == ''">0.107.1</RitsuLibCompatTarget>
+    <!-- 单 DLL 兼容 0.111.0 / 0.113.1：编译期使用最低目标 0.111.0。 -->
+    <RitsuLibCompatTarget Condition="'$(RitsuLibCompatTarget)' == ''">0.111.0</RitsuLibCompatTarget>
 
     <ModOutputDir Condition="'$(ModOutputDir)' == ''">$(Sts2Dir)\mods\CharacterModIsolation\</ModOutputDir>
     <CopyModOnBuild Condition="'$(CopyModOnBuild)' == ''">true</CopyModOnBuild>
