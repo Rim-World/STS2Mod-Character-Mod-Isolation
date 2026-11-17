@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
+using Godot;
 using HarmonyLib;
+using MegaCrit.Sts2.Core.AutoSlay;
+using MegaCrit.Sts2.Core.AutoSlay.Helpers;
 using MegaCrit.Sts2.Core.DevConsole;
 using MegaCrit.Sts2.Core.DevConsole.ConsoleCommands;
 using MegaCrit.Sts2.Core.Entities.Cards;
@@ -15,6 +19,7 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Events;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Nodes;
+using MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 
@@ -65,6 +70,78 @@ internal static class ReleaseGatePatch
     private static void Postfix(ref bool __result)
     {
         __result = false;
+    }
+}
+
+[HarmonyPatch]
+internal static class ForceMgrCharacterPatch
+{
+    private const string TargetCharacter = "MGR_MOD_CHARACTER_MGR_CHARACTER";
+
+    private static MethodBase? TargetMethod()
+    {
+        var type = typeof(AutoSlayer).Assembly.GetType("MegaCrit.Sts2.Core.AutoSlay.Launchers.ModeScreen");
+        return type?.GetMethod("SelectRandomCharacterAsync", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+    }
+
+    private static bool Prefix(Control screen, ref Task __result)
+    {
+        try
+        {
+            var container = screen.GetNode("CharSelectButtons/ButtonContainer");
+            var buttons = UiHelper.FindAll<NCharacterSelectButton>(container);
+            foreach (var button in buttons)
+            {
+                try { button.UnlockIfPossible(); }
+                catch (Exception ex) { Log.Warn("[probe] unlock failed: " + ex.Message); }
+            }
+
+            var target = buttons.FirstOrDefault(button =>
+                string.Equals(button.Character?.Id.Entry, TargetCharacter, StringComparison.Ordinal));
+            if (target is null)
+            {
+                Log.Warn("[probe] MGR character button not found");
+                return true;
+            }
+
+            target.Select();
+            Log.Info("[probe] forced character=" + target.Character!.Id.Entry);
+            __result = Task.CompletedTask;
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Log.Error("[probe] force MGR selection failed: " + ex);
+            return true;
+        }
+    }
+}
+
+[HarmonyPatch(typeof(AutoSlayer), "LogRunStartedAndCheckMode")]
+internal static class RunStartProbePatch
+{
+    private static void Postfix(RunState runState)
+    {
+        try
+        {
+            var player = runState.Players[0];
+            var deck = string.Join(",", player.Deck.Cards.Select(card => card.Id.Entry));
+            var contextType = AppDomain.CurrentDomain.GetAssemblies()
+                .Select(assembly => assembly.GetType("CharacterModIsolation.RunContext"))
+                .FirstOrDefault(type => type is not null);
+            var ensure = contextType?.GetMethod("EnsureForCurrentRun",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
+            ensure?.Invoke(null, null);
+            var active = contextType?.GetProperty("IsActive",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null);
+            var reason = contextType?.GetProperty("Reason",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null);
+            Log.Info($"[probe] run character={player.Character.Id.Entry} cmi_active={active} cmi_reason={reason} deck=[{deck}]");
+        }
+        catch (Exception ex)
+        {
+            Log.Error("[probe] run-start inspection failed: " + ex);
+        }
     }
 }
 

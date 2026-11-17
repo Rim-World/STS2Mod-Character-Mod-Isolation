@@ -13,6 +13,7 @@
 - 依赖最低版本提高到 RitsuLib 0.6.14；新增 `tools/check-ritsu-version.ps1` 检查本机版本与清单下限。
 - 单 DLL 兼容 0.111、0.113 的构建说明。
 - 同一 DLL 在 0.111.1、0.113.1 完成加载与 AutoSlayer；0.113.1 摄政 A10 胜利，`removed=1 kept=6`。
+- 强制 MGR 角色局验证不隔离：`cmi_active=False reason=mod-character`，MGR 卡组与奖励保留。
 
 ### Changed
 

@@ -93,7 +93,8 @@ dotnet build 9.SRC/CharacterModIsolation.csproj -c Release
 | 0.113.1 AutoSlayer | 通过 | 同一 DLL；standard seed=1，摄政 A10，49 层 victory；`removed=1 kept=6` |
 | 禁用模组不检测 | 通过 | MGRMod 禁用后 `autoCharacter=0 []` |
 | MGRMod 自动识别 | 通过 | 启用后 `mods=39 character=1`，`MGRMod kind=Character` |
-| 游戏内卡牌/遗物/药水/事件/章节 | 待验证 | 需要启用角色模组后实测 |
+| MGR 角色局不隔离 | 通过 | 强制 MGR；`cmi_active=False reason=mod-character`；MGR 起始卡组与奖励保留；`[filter]` 0 条 |
+| 游戏内卡牌/遗物/药水/事件/章节 | 部分验证 | 原版角色局过滤已测；MGR 角色局卡池保留已测 |
 | 0.107.1 | 支持已终止 | 不再兼容 |
 | 0.111.1 加载到主菜单 | 通过 | 0.2.0；49 个补丁应用，0 失败；设置页注册 |
 | 0.111.1 AutoSlayer | 通过（跑完） | standard seed=1，摄政 A10；49 层达上限后主动放弃 |
