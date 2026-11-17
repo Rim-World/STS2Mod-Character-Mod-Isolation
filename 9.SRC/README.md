@@ -2,7 +2,7 @@
 
 让第三方角色模组保持启用，同时在游玩原版角色时把角色模组新增的内容从本局内容池中隔离。纯卡牌、纯遗物等非角色模组内容继续出现。
 
-- 当前版本：0.2.0。状态：可构建；0.113.1 无头加载、仅启用模组筛选与设置页检测清单已通过。0.111.0 运行验证待环境。
+- 当前版本：0.2.0。状态：可构建；0.113.1、0.111.1 的无头加载、AutoSlayer、设置页检测清单与禁用 MGR 排除已通过。
 - 目标游戏：Slay the Spire 2 0.111.0、0.113.1。0.107.1 停止支持。
 - 运行环境：Godot 4.5.1、.NET 9、Harmony。
 - 设计文档：[可行性调研](../3.DOCS/001-R-角色模组隔离可行性调研.md)、[总体设计](../5.SDD/001-总体设计草案.md)、[隔离行为规范](../6.SPEC/001-隔离行为规范-v0.4.md)。
@@ -62,7 +62,7 @@ Slay the Spire 2/mods/CharacterModIsolation/
 dotnet build 9.SRC/CharacterModIsolation.csproj -c Release
 ```
 
-默认引用本机 0.113.1 的 `sts2.dll`、`0Harmony.dll` 和已安装的 RitsuLib 变体包。换机器时用 `/p:Sts2Dir=...`、`/p:RitsuLibDeployRoot=...` 覆盖。
+默认引用本机当前游戏版本的 `sts2.dll`、`0Harmony.dll` 和已安装的 RitsuLib 变体包。当前测试环境为 0.111.1；兼容编译入口为 0.111.0。换机器时用 `/p:Sts2Dir=...`、`/p:RitsuLibDeployRoot=...` 覆盖。
 
 ## 验证状态
 
@@ -76,7 +76,10 @@ dotnet build 9.SRC/CharacterModIsolation.csproj -c Release
 | MGRMod 自动识别 | 通过 | 启用后 `mods=39 character=1`，`MGRMod kind=Character` |
 | 游戏内卡牌/遗物/药水/事件/章节 | 待验证 | 需要启用角色模组后实测 |
 | 0.107.1 | 支持已终止 | 不再兼容 |
-| 0.111.0 | 待验证 | 需要运行环境，见 009-M |
+| 0.111.1 加载到主菜单 | 通过 | 0.2.0；49 个补丁应用，0 失败；设置页注册 |
+| 0.111.1 AutoSlayer | 通过（跑完） | standard seed=1，摄政 A10；49 层达上限后主动放弃 |
+| 0.111.1 原版角色过滤 | 通过 | `characters removed=1 kept=5`；奖励卡全部为摄政原版卡 |
+| 0.111.1 禁用 MGRMod | 通过 | `mods=34 character=0`；`enabled=33 autoCharacter=0 []` |
 
 ## 已知限制
 
@@ -90,7 +93,7 @@ dotnet build 9.SRC/CharacterModIsolation.csproj -c Release
 
 ## 开发
 
-源码在 `9.SRC/src/`。当前构建基线为 0.113.1，RitsuLib 编译兼容入口为 0.111.0；0.107.1 不再支持。兼容与检测计划见 [009-M](../2.PLANS/009-M-111兼容与检测显示.md)。
+源码在 `9.SRC/src/`。当前构建基线为当前游戏 0.111.1，RitsuLib 编译兼容入口为 0.111.0；0.107.1 不再支持。兼容与检测计划见 [009-M](../2.PLANS/009-M-111兼容与检测显示.md)。
 
 ## 许可
 
