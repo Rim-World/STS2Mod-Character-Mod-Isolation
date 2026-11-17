@@ -10,6 +10,7 @@ using MegaCrit.Sts2.Core.AutoSlay;
 using MegaCrit.Sts2.Core.AutoSlay.Helpers;
 using MegaCrit.Sts2.Core.DevConsole;
 using MegaCrit.Sts2.Core.DevConsole.ConsoleCommands;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Events;
@@ -17,6 +18,7 @@ using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Events;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Nodes;
@@ -279,11 +281,152 @@ internal static class RunStartProbePatch
             var reason = contextType?.GetProperty("Reason",
                 BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)?.GetValue(null);
             Log.Info($"[probe] run character={player.Character.Id.Entry} cmi_active={active} cmi_reason={reason} deck=[{deck}]");
+            SplashProbe.Audit(state);
+            SplashProbe.Inject(state);
             CoverageProbe.Run(state);
         }
         catch (Exception ex)
         {
             Log.Error("[probe] run-start inspection failed: " + ex);
+        }
+    }
+}
+
+internal static class SplashProbe
+{
+    public static void Audit(RunState state)
+    {
+        try
+        {
+            var player = state.Players[0];
+            var ownPool = player.Character.CardPool;
+            var pools = player.UnlockState.CharacterCardPools.ToList();
+            var removed = pools.Count > 1 && pools.Remove(ownPool);
+            var attacks = pools
+                .SelectMany(pool => pool.GetUnlockedCards(
+                    player.UnlockState, player.RunState.CardMultiplayerConstraint))
+                .Where(card => card.Type == CardType.Attack)
+                .ToList();
+            var isolated = attacks
+                .Where(card => CoverageProbe.OwnerOf(card.GetType()) is { Length: > 0 })
+                .ToList();
+            var ids = string.Join(",", isolated.Select(card => card.Id.Entry)
+                .Distinct().OrderBy(id => id, StringComparer.Ordinal));
+            var poolIds = string.Join(",", pools.Select(pool => pool.Id.Entry)
+                .OrderBy(id => id, StringComparer.Ordinal));
+            Log.Info($"[probe] splash-audit player={player.Character.Id.Entry} " +
+                     $"ownRemoved={removed} pools=[{poolIds}] attackCandidates={attacks.Count} " +
+                     $"isolated={isolated.Count} ids=[{ids}]");
+        }
+        catch (Exception ex)
+        {
+            Log.Error("[probe] splash-audit failed: " + ex);
+        }
+    }
+
+    public static void Inject(RunState state)
+    {
+        try
+        {
+            var player = state.Players[0];
+            for (var i = 0; i < 5; i++)
+            {
+                var card = state.CreateCard(ModelDb.Card<Splash>(), player);
+                card.FloorAddedToDeck = 1;
+                player.Deck.AddInternal(card);
+            }
+            Log.Info($"[probe] splash-inject count=5 deck={player.Deck.Cards.Count} " +
+                     $"deckIds=[{string.Join(",", player.Deck.Cards.Select(card => card.Id.Entry))}]");
+        }
+        catch (Exception ex)
+        {
+            Log.Error("[probe] splash-inject failed: " + ex);
+        }
+    }
+}
+
+[HarmonyPatch(typeof(Splash), "OnPlay")]
+internal static class SplashPlayProbe
+{
+    private static void Prefix(Splash __instance)
+    {
+        try
+        {
+            Log.Info($"[probe] splash-play owner={__instance.Owner?.Character.Id.Entry ?? "null"} " +
+                     $"upgraded={__instance.IsUpgraded} pile={__instance.Pile?.Type.ToString() ?? "null"}");
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("[probe] splash-play log failed: " + ex.Message);
+        }
+    }
+}
+
+[HarmonyPatch(typeof(CardFactory), nameof(CardFactory.GetDistinctForCombat))]
+internal static class CombatGenerationProbe
+{
+    private static void Prefix(Player player, IEnumerable<CardModel> cards, int count)
+    {
+        try
+        {
+            var source = cards.ToList();
+            var isolated = source
+                .Where(card => CoverageProbe.OwnerOf(card.GetType()) is { Length: > 0 })
+                .ToList();
+            Log.Info($"[probe] combat-generation-enter player={player.Character.Id.Entry} " +
+                     $"count={count} source={source.Count} isolated={isolated.Count} " +
+                     $"ids=[{string.Join(",", isolated.Select(card => card.Id.Entry).Distinct().OrderBy(id => id, StringComparer.Ordinal))}]");
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("[probe] combat-generation enter failed: " + ex.Message);
+        }
+    }
+
+    private static void Postfix(Player player, ref IEnumerable<CardModel> __result)
+    {
+        try
+        {
+            var selected = __result?.ToList() ?? [];
+            var isolated = selected
+                .Where(card => CoverageProbe.OwnerOf(card.GetType()) is { Length: > 0 })
+                .ToList();
+            Log.Info($"[probe] combat-generation-result player={player.Character.Id.Entry} " +
+                     $"count={selected.Count} isolated={isolated.Count} " +
+                     $"ids=[{string.Join(",", selected.Select(card => card.Id.Entry))}]");
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("[probe] combat-generation result failed: " + ex.Message);
+        }
+    }
+}
+
+[HarmonyPatch(typeof(CardSelectCmd), nameof(CardSelectCmd.FromChooseACardScreen))]
+internal static class SplashSelectProbe
+{
+    private static void Prefix(object[] __args)
+    {
+        try
+        {
+            var cards = __args.Length > 1
+                ? (__args[1] as IEnumerable<CardModel>)?.ToList()
+                : null;
+            if (cards is null)
+            {
+                Log.Warn("[probe] splash-select-candidates args missing");
+                return;
+            }
+
+            var isolated = cards
+                .Where(card => CoverageProbe.OwnerOf(card.GetType()) is { Length: > 0 })
+                .ToList();
+            Log.Info($"[probe] splash-select-candidates count={cards.Count} isolated={isolated.Count} " +
+                     $"ids=[{string.Join(",", cards.Select(card => card.Id.Entry))}]");
+        }
+        catch (Exception ex)
+        {
+            Log.Warn("[probe] splash-select-candidates failed: " + ex.Message);
         }
     }
 }
