@@ -29,9 +29,6 @@ TestResults/
 .DS_Store
 Thumbs.db
 
-# 本机代理规则：不随项目发布
-AGENTS.md
-
 # 测试构建产物与本机部署副本
 8.TEST/**/bin/
 8.TEST/**/obj/
