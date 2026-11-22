@@ -9,7 +9,7 @@ internal static class PoolPatches
     {
         public CardModel[]? Source;
         public CardModel[]? Filtered;
-        public int PolicyVersion;
+        public int PolicyEpoch;
         public int SettingsVersion;
     }
 
@@ -22,15 +22,15 @@ internal static class PoolPatches
             if (!FilterPolicy.CardsActive || __result is not CardModel[] source)
                 return;
 
-            var policyVersion = RunContext.PolicyVersion;
+            var policyEpoch = RunContext.PolicyEpoch;
             var settingsVersion = ModSettings.Version;
             var cache = SourceCaches.GetOrCreateValue(__instance);
             if (!ReferenceEquals(cache.Source, source) ||
-                cache.PolicyVersion != policyVersion ||
+                cache.PolicyEpoch != policyEpoch ||
                 cache.SettingsVersion != settingsVersion)
             {
                 cache.Source = source;
-                cache.PolicyVersion = policyVersion;
+                cache.PolicyEpoch = policyEpoch;
                 cache.SettingsVersion = settingsVersion;
                 cache.Filtered = source
                     .Where(static card => !FilterPolicy.ShouldRemoveCard(card.GetType()))

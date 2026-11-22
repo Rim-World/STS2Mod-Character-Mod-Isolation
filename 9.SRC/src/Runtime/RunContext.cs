@@ -99,6 +99,12 @@ internal static class RunContext
         }
     }
 
+    /// <summary>
+    /// Raw policy epoch for hot filter paths. It deliberately does not read RunManager:
+    /// the source cache is already reachable from UI prewarm and must not trigger a context refresh.
+    /// </summary>
+    internal static int PolicyEpoch => _policyVersion;
+
     public static bool IsActiveForActs
     {
         get
