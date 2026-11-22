@@ -3,7 +3,7 @@
   "name": "角色模组隔离 / Character Mod Isolation",
   "author": "再玩小卡组找人弄你",
   "description": "原版角色局隐藏角色模组新增内容；模组角色保持可选、可正常游玩。",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "has_pck": false,
   "has_dll": true,
   "affects_gameplay": true,

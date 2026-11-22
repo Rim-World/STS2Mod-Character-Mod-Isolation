@@ -231,12 +231,22 @@ internal static class Audit
         Log.Info($"{Probe.Prefix} context active={Value("CharacterModIsolation.RunContext", "IsActive")} " +
                  $"reason={Value("CharacterModIsolation.RunContext", "Reason")} " +
                  $"source={Value("CharacterModIsolation.RunContext", "Source")} " +
-                 $"effective=[{string.Join(",", Effective())}]");
+                 $"owner={Value("CharacterModIsolation.RunContext", "CurrentCharacterOwner") ?? "vanilla"} " +
+                 $"protected=[{string.Join(",", Set("ProtectedModIds"))}] " +
+                 $"isolated=[{string.Join(",", Set("IsolatedModIds"))}] " +
+                 $"effective=[{string.Join(",", Effective())}] " +
+                 $"version={Value("CharacterModIsolation.RunContext", "PolicyVersion")}");
     }
 
     private static IEnumerable<string> Effective()
     {
         var value = Reflection.Property("CharacterModIsolation.RunContext", "EffectiveModIds");
+        return value is IEnumerable<string> ids ? ids.OrderBy(id => id, StringComparer.Ordinal) : [];
+    }
+
+    private static IEnumerable<string> Set(string property)
+    {
+        var value = Reflection.Property("CharacterModIsolation.RunContext", property);
         return value is IEnumerable<string> ids ? ids.OrderBy(id => id, StringComparer.Ordinal) : [];
     }
 

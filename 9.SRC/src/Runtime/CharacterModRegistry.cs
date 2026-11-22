@@ -26,23 +26,6 @@ internal static class CharacterModRegistry
     private static bool _built;
     private static HashSet<string>? _enabledIds;
 
-    public static string? GetIsolatedOwner(Type type)
-    {
-        var owner = ContentOwnership.GetOwnerModId(type);
-        return owner is not null && IsCharacterMod(owner) ? owner : null;
-    }
-
-    public static bool IsCharacterMod(string modId)
-    {
-        var settings = ModSettings.Current;
-        if (settings.Source == IsolationSource.Manual)
-            return settings.ManualModIds.Contains(modId) && IsModEnabled(modId);
-
-        EnsureAuto();
-        return Auto.TryGetValue(modId, out var result) &&
-               result.Kind is CharacterModKind.Character or CharacterModKind.LikelyCharacter;
-    }
-
     public static bool IsModEnabled(Mod mod)
     {
         try
@@ -87,8 +70,6 @@ internal static class CharacterModRegistry
         return Auto.Values.Any(static result =>
             result.Kind is CharacterModKind.Character or CharacterModKind.LikelyCharacter);
     }
-
-    public static bool IsIsolatedMod(string modId) => IsCharacterMod(modId);
 
     public static bool HasAnyCharacterMod()
     {

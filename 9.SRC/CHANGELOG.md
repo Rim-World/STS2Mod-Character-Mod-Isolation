@@ -2,6 +2,38 @@
 
 本文件遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与语义化版本。版本更新日志的详细记录在 `7.ChangeLog/`，本文件只保留面向使用者的摘要。
 
+## [0.3.0] - 2026-11-23
+
+### Added
+
+- 模组角色局保护当前角色所属模组，隔离其他角色模组。
+- `RunContext` 增加 `ProtectedModIds`、`IsolatedModIds`、`CurrentCharacterOwner` 与 `PolicyVersion`。
+- 设置页自动状态增加「本局保护此模组」，手动勾选文案改为「作为角色模组」。
+- 日志记录模式、当前角色归属、保护集、隔离集与策略版本。
+
+### Changed
+
+- 原版角色局仍然隔离全部角色模组内容。
+- 手动模式把勾选模组视为角色模组集合；未勾选模组不参与过滤。
+- 隔离集为空时不启用过滤，当前角色内容保留。
+
+### Fixed
+
+- `SourceCache` 只按源数组判断导致跨局串用：同一进程自动模式建缓存后，手动仅保护 Watcher 时 MGR 池仍返回 0。缓存现在按 `PolicyVersion` 与设置版本重建。
+
+### Verified
+
+- 0.111.1：自动 MGR 局 `MGR 91 / Watcher 0`；自动 Watcher 局反向成立。
+- 0.111.1：手动 `{MGRMod,Watcher}` 的 MGR 局通过；手动 `{MGRMod}` 的 MGR 局 `active=False reason=manual-no-other`。
+- 0.111.1：两局缓存 Run B 的 MGR 池 91；0.3.0.0 加载、50 补丁、0 失败。
+- 0.113.1：使用 113.1 程序集编译通过；运行时未执行。
+
+### Known limits
+
+- 直接读取 `ModelDb` 全局集合仍会看到其他角色模组内容。
+- 飞溅、万花筒、Orobas、色彩哲学家与设置页视觉尚未在 0.3.0 逐项复跑。
+- 0.113.1 运行时需要用户切换版本后验证。
+
 ## [0.2.0] - 2026-11-17
 
 ### Added

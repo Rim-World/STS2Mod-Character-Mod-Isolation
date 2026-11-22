@@ -9,6 +9,8 @@ internal static class PoolPatches
     {
         public CardModel[]? Source;
         public CardModel[]? Filtered;
+        public int PolicyVersion;
+        public int SettingsVersion;
     }
 
     private static readonly ConditionalWeakTable<CardPoolModel, SourceCache> SourceCaches = new();
@@ -20,10 +22,16 @@ internal static class PoolPatches
             if (!FilterPolicy.CardsActive || __result is not CardModel[] source)
                 return;
 
+            var policyVersion = RunContext.PolicyVersion;
+            var settingsVersion = ModSettings.Version;
             var cache = SourceCaches.GetOrCreateValue(__instance);
-            if (!ReferenceEquals(cache.Source, source))
+            if (!ReferenceEquals(cache.Source, source) ||
+                cache.PolicyVersion != policyVersion ||
+                cache.SettingsVersion != settingsVersion)
             {
                 cache.Source = source;
+                cache.PolicyVersion = policyVersion;
+                cache.SettingsVersion = settingsVersion;
                 cache.Filtered = source
                     .Where(static card => !FilterPolicy.ShouldRemoveCard(card.GetType()))
                     .ToArray();

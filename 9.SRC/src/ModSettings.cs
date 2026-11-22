@@ -210,8 +210,8 @@ internal static class ModSettings
         page.WithModDisplayName(Localization.Text("cmi.mod.name", "Character Mod Isolation"))
             .WithTitle(Localization.Text("cmi.page.title", "Character Mod Isolation"))
             .WithDescription(Localization.Text("cmi.page.desc",
-                "Hide content added by character mods when the current run has only vanilla characters. " +
-                "Character mods stay enabled and selectable."));
+                "Vanilla-character runs hide all character-mod content. A character-mod run keeps the current " +
+                "character's mod and hides other character mods. Character mods stay enabled and selectable."));
 
         page.AddSection("general", AddGeneralSection);
         page.AddSection("mods", AddModsSection);
@@ -232,7 +232,7 @@ internal static class ModSettings
                     ? Localization.Text("cmi.source.auto", "Automatic")
                     : Localization.Text("cmi.source.manual", "Manual selection"),
                 Localization.Text("cmi.source.desc",
-                    "Automatic detects character mods. Manual skips detection and isolates only the mods you check."),
+                    "Automatic detects character mods. Manual skips detection and treats the mods you check as character mods."),
                 ModSettingsChoicePresentation.Dropdown)
             .AddToggle("cards", Localization.Text("cmi.filter.cards", "Cards"), CardsBinding, null)
             .AddToggle("relics", Localization.Text("cmi.filter.relics", "Relics"), RelicsBinding, null)
@@ -256,7 +256,7 @@ internal static class ModSettings
 
         section.WithTitle(Localization.Text("cmi.section.mods", "Enabled mods"))
             .WithDescription(Localization.Text("cmi.mods.desc",
-                "Automatic mode shows detected character mods. Manual mode lists enabled mods only."));
+                "Automatic mode shows detected character mods. Manual mode treats checked mods as character mods."));
 
         if (mods.Count == 0)
         {
@@ -281,7 +281,7 @@ internal static class ModSettings
         section.AddHeader(
                 "auto_title",
                 Localization.Text("cmi.auto.title", "Detected character mods"),
-                Localization.Text("cmi.auto.title.desc", "Only enabled mods are examined."))
+                Localization.Text("cmi.auto.title.desc", "Only enabled mods are examined. The current character's mod is protected."))
             .WithEntryVisibleWhen("auto_title", () => Current.Source == IsolationSource.Auto);
 
         section.AddParagraph(
@@ -294,7 +294,7 @@ internal static class ModSettings
         section.AddHeader(
                 "manual_title",
                 Localization.Text("cmi.manual.title", "Enabled mods"),
-                Localization.Text("cmi.manual.title.desc", "Only checked mods are isolated."))
+                Localization.Text("cmi.manual.title.desc", "Checked mods are treated as character mods. The current character's mod is protected."))
             .WithEntryVisibleWhen("manual_title", () => Current.Source == IsolationSource.Manual);
 
         for (var i = 0; i < mods.Count; i++)
@@ -336,11 +336,15 @@ internal static class ModSettings
         var anyCategory = settings.FilterCards || settings.FilterRelics || settings.FilterPotions ||
                           settings.FilterEvents || settings.FilterEncounters || settings.FilterAncients ||
                           settings.FilterActs;
-        if (RunContext.IsActive && anyCategory && RunContext.EffectiveModIds.Contains(id))
-            return detail + " · " + Localization.Resolve("cmi.auto.status.active", "Filtering this run");
+        if (RunContext.IsProtected(id))
+            return detail + " · " + Localization.Resolve("cmi.auto.status.protected",
+                "Protected: current character's mod");
+        if (RunContext.IsActive && anyCategory && RunContext.IsolatedModIds.Contains(id))
+            return detail + " · " + Localization.Resolve("cmi.auto.status.active", "Isolated this run");
         if (RunContext.IsActive || IsInRun())
-            return detail + " · " + Localization.Resolve("cmi.auto.status.inactive", "Detected; not filtering this run");
-        return detail + " · " + Localization.Resolve("cmi.auto.status.pending", "Detected; starts in a vanilla-character run");
+            return detail + " · " + Localization.Resolve("cmi.auto.status.inactive", "Detected; not isolated this run");
+        return detail + " · " + Localization.Resolve("cmi.auto.status.pending",
+            "Detected; takes effect in an applicable run");
     }
 
     private static bool IsInRun()
