@@ -27,6 +27,7 @@
 - 0.111.1：自动 MGR 局 `MGR 91 / Watcher 0`；自动 Watcher 局反向成立。
 - 0.111.1：手动 `{MGRMod,Watcher}` 的 MGR 局通过；手动 `{MGRMod}` 的 MGR 局 `active=False reason=manual-no-other`。
 - 0.111.1：两局缓存 Run B 的 MGR 池 91；0.3.0.0 加载、50 补丁、0 失败。
+- 0.111.1：最终 DLL 自动 MGR 保护集正确，MGR 池 91、Watcher 池 0、Token 17；推进到 floor 31 后被 MGR 自身 `ShowChanneledNote` 越界中止。
 - 0.113.1：自动 Watcher 与自动原版摄政均 3 幕 49 层 victory，退出码 0；两局缓存 Run B 的 MGR 池 91。
 - 0.113.1：自动 MGR 保护集审计通过；全跑被 MGR 自身的 `ShowChanneledNote` 越界异常中止。
 
@@ -34,7 +35,7 @@
 
 - 直接读取 `ModelDb` 全局集合仍会看到其他角色模组内容。
 - 飞溅、万花筒、Orobas、色彩哲学家与设置页视觉尚未在 0.3.0 逐项复跑。
-- 0.113.1 的 MGR 完整局仍受 MGR 0.8.1 自身异常影响。
+- MGR 完整局在 0.111.1 与 0.113.1 均受 MGR 0.8.1 自身异常影响。
 
 ## [0.2.0] - 2026-11-17
 
