@@ -109,15 +109,50 @@ internal static class CacheDriver
     private static async Task StartVanillaRun()
     {
         var character = ModelDb.Character<Regent>();
-        Log.Info($"{Prefix} cache-driver start-run character={character.Id.Entry}");
-        await NGame.Instance.StartNewSingleplayerRun(
-            character,
-            shouldSave: false,
-            ActModel.GetDefaultList(),
-            Array.Empty<ModifierModel>(),
-            "1",
-            GameMode.Standard,
-            0);
+        var method = typeof(NGame)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .FirstOrDefault(candidate =>
+                candidate.Name == "StartNewSingleplayerRun" &&
+                candidate.GetParameters().Length >= 8);
+        if (method is null)
+            throw new MissingMethodException(nameof(NGame), "StartNewSingleplayerRun");
+
+        var parameters = method.GetParameters();
+        object?[] args;
+        if (parameters[0].ParameterType.Name == "Player")
+        {
+            var unlock = new UnlockState(SaveManager.Instance.Progress);
+            var player = Player.CreateForNewRun(character, unlock, 1UL);
+            args =
+            [
+                player,
+                false,
+                ActModel.GetDefaultList(),
+                Array.Empty<ModifierModel>(),
+                "1",
+                GameMode.Standard,
+                false,
+                0,
+            ];
+        }
+        else
+        {
+            args =
+            [
+                character,
+                false,
+                ActModel.GetDefaultList(),
+                Array.Empty<ModifierModel>(),
+                "1",
+                GameMode.Standard,
+                0,
+            ];
+        }
+
+        Log.Info($"{Prefix} cache-driver start-run character={character.Id.Entry} parameters={parameters.Length}");
+        if (method.Invoke(NGame.Instance, args) is not Task task)
+            throw new InvalidOperationException("StartNewSingleplayerRun did not return a Task");
+        await task;
         await Frames(5);
     }
 
