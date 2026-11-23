@@ -42,6 +42,21 @@ public static class Probe
         {
             Log.Error($"{Prefix} harmony install failed: {ex}");
         }
+
+        if (System.Environment.GetEnvironmentVariable("CMI_PROBE_INSTALL") == "1")
+        {
+            try
+            {
+                var type = Reflection.IsolationAssembly?.GetType("CharacterModIsolation.PatchRegistry");
+                type?.GetMethod("InstallAll", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+                    ?.Invoke(null, null);
+                Log.Info($"{Prefix} forced CharacterModIsolation patch installation");
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"{Prefix} forced patch installation failed: {ex}");
+            }
+        }
     }
 }
 
@@ -224,6 +239,7 @@ internal static class Audit
         LogStartingContents(player);
         LogDirectPaths(state, player);
         LogSourceCache();
+        P4Audit.Run(state);
     }
 
     private static void LogContext()
