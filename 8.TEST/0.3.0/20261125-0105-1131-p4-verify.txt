@@ -1,0 +1,46 @@
+PASS MGR run start
+PASS MGR context
+PASS MGR Splash candidates
+PASS MGR Kaleidoscope
+PASS MGR Orobas
+PASS MGR Splash select
+PASS MGR Colorful event
+PASS MGR Colorful options exclude mods
+PASS MGR card source filtering
+PASS Watcher run start
+PASS Watcher context
+PASS Watcher Splash candidates
+PASS Watcher Kaleidoscope
+PASS Watcher Orobas
+PASS Watcher Splash actual play
+PASS Watcher Splash select
+PASS Watcher Colorful event
+PASS Watcher Colorful options exclude mods
+PASS Watcher card source filtering
+PASS Vanilla run start
+PASS Vanilla context
+PASS Vanilla Splash candidates
+PASS Vanilla Kaleidoscope
+PASS Vanilla Orobas
+PASS Vanilla Splash actual play
+PASS Vanilla Splash select
+PASS Vanilla Colorful event
+PASS Vanilla Colorful options exclude mods
+PASS Vanilla card source filtering
+PASS Cache run A context
+PASS Cache run A MGR pool
+PASS Cache run A Watcher pool
+PASS Cache run B context
+PASS Cache run B MGR pool
+PASS Cache run B Watcher pool
+PASS Cache run C context
+PASS Cache run C MGR pool
+PASS Cache run C Watcher pool
+PASS Cache driver completion
+PASS Cache settings restore
+PASS Manual unselected current context
+PASS Manual unselected MGR pool
+PASS Manual unselected Watcher pool
+PASS Manual settings restore
+CHECKS 44
+RESULT PASS
