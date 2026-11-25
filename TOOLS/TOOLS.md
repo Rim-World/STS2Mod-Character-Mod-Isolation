@@ -9,7 +9,7 @@
 |---|---|---|---|---|---|
 | `ilspycmd` | 9.1.0.7988 | `C:\Users\13167\.dotnet\tools\ilspycmd.exe` | 反编译参考；本轮仅用已有反编译产物 | 既有全局工具 | 否 |
 | `dotnet` | 9.0.321 | `C:\Program Files\dotnet\dotnet.exe` | 环境确认；本轮未构建 | 既有 | 否 |
-| `cfr` | 0.152 | `STS2-Reference/10.Tools/cfr-0.152.jar` | 塔 1 参考反编译（参考库已有） | 参考库 | 否 |
+| `cfr` | 0.152 | `STS2-Reference/11.Tools/cfr-0.152.jar` | 塔 1 参考反编译（参考库已有） | 参考库 | 否 |
 
 ## 项目内工具
 
